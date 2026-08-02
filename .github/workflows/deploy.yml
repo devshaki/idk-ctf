@@ -14,9 +14,9 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::009661764077:role/cicd/cicdRole
+          role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
-          audience: sts.amazonaws.com
+          audience: ://amazonaws.com
 
       - name: List Resources
         run: |
