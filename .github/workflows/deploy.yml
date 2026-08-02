@@ -17,11 +17,17 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Get CloudFront Domain
+      - name: Fetch Lambda Logs
         run: |
-          echo "=== Fetching Public Domain and Origins ==="
-          aws cloudfront list-distributions > cloudfront.json
-          cat cloudfront.json
+          echo "=== Fetching Recent CloudWatch Log Streams ==="
+          aws logs describe-log-streams --log-group-name "/aws/lambda/nslookupv2" --order-by LastEventTime --descending --limit 5 > streams.json
+          cat streams.json
           
-          echo "=== Beautiful View of Domains and Routes ==="
-          jq '.DistributionList.Items[] | {Domain: .DomainName, Origins: .Origins.Items[] | {Id: .Id, DomainName: .DomainName}}' cloudfront.json || true
+          # שליפת שם הסטרים האחרון שנוצר מההזרקה שלך
+          STREAM_NAME=$(jq -r '.logStreams[0].logStreamName' streams.json)
+          
+          echo "=== Printing Log Events from Stream: $STREAM_NAME ==="
+          aws logs get-log-events --log-group-name "/aws/lambda/nslookupv2" --log-stream-name "$STREAM_NAME" > log_events.json
+          
+          # הדפסת כל הודעות הלוג - כאן יופיע ה-Flag שהוזרק!
+          jq -r '.events[].message' log_events.json
