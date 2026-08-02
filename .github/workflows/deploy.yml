@@ -17,7 +17,7 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Read Ultimate Flag
+      - name: Read Final Flag
         run: |
           echo "=== Reading Flag From Localized Exfiltration ==="
-          aws s3 cp s3://platform-bucket-009661764077-us-east-1/ultimate_flag.txt -
+          aws s3 cp s3://platform-bucket-009661764077-us-east-1/final_flag.txt -
