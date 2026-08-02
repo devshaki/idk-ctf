@@ -17,8 +17,11 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Find Website API Endpoint
+      - name: Get CloudFront Domain
         run: |
-          echo "=== Reading Website JavaScript to find API Endpoint ==="
-          aws s3 cp s3://site781fe43f26b9eba3/js/scripts.js - || true
-          aws s3 cp s3://site781fe43f26b9eba3/index.html - || true
+          echo "=== Fetching Public Domain and Origins ==="
+          aws cloudfront list-distributions > cloudfront.json
+          cat cloudfront.json
+          
+          echo "=== Beautiful View of Domains and Routes ==="
+          jq '.DistributionList.Items[] | {Domain: .DomainName, Origins: .Origins.Items[] | {Id: .Id, DomainName: .DomainName}}' cloudfront.json || true
