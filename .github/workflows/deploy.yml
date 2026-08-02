@@ -17,25 +17,10 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Extract Lambda Source Code
+      - name: Network and Compute Recon
         run: |
-          echo "=== Getting Function Configuration & Code Link ==="
-          aws lambda get-function --function-name nslookupv2 > function_info.json
+          echo "=== Listing EC2 Instances ==="
+          aws ec2 describe-instances --region us-east-1 || true
           
-          echo "=== Extracting Download URL ==="
-          # שליפת ה-URL הזמני להורדת קוד המקור מתוך ה-JSON
-          DOWNLOAD_URL=$(jq -r '.Code.Location' function_info.json)
-          
-          echo "=== Downloading Source Code ZIP ==="
-          curl -o lambda_source.zip "$DOWNLOAD_URL"
-          
-          echo "=== Unzipping Lambda Source ==="
-          mkdir lambda_extracted
-          unzip lambda_source.zip -d ./lambda_extracted/
-          
-          echo "=== Contents of Lambda Source ==="
-          ls -la ./lambda_extracted/
-          
-          echo "=== Reading extracted files ==="
-          cat ./lambda_extracted/lambda_function.py || true
-          cat ./lambda_extracted/* || true
+          echo "=== Listing CodeBuild Projects ==="
+          aws codebuild list-projects --region us-east-1 || true
