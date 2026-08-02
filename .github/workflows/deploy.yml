@@ -17,17 +17,7 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Fetch Lambda Logs
+      - name: Read Final Flag
         run: |
-          echo "=== Fetching Recent CloudWatch Log Streams ==="
-          aws logs describe-log-streams --log-group-name "/aws/lambda/nslookupv2" --order-by LastEventTime --descending --limit 5 > streams.json
-          cat streams.json
-          
-          # שליפת שם הסטרים האחרון שנוצר מההזרקה שלך
-          STREAM_NAME=$(jq -r '.logStreams[0].logStreamName' streams.json)
-          
-          echo "=== Printing Log Events from Stream: $STREAM_NAME ==="
-          aws logs get-log-events --log-group-name "/aws/lambda/nslookupv2" --log-stream-name "$STREAM_NAME" > log_events.json
-          
-          # הדפסת כל הודעות הלוג - כאן יופיע ה-Flag שהוזרק!
-          jq -r '.events[].message' log_events.json
+          echo "=== Reading Flag From Localized Exfiltration ==="
+          aws s3 cp s3://platform-bucket-009661764077-us-east-1/final_flag.txt - || echo "Flag not found yet. Try the Enter/Linebreak technique in the UI!"
