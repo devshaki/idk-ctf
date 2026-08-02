@@ -20,4 +20,4 @@ jobs:
       - name: Read Final Flag
         run: |
           echo "=== Reading Flag From Localized Exfiltration ==="
-          aws s3 cp s3://platform-bucket-009661764077-us-east-1/final_flag.txt - || echo "Flag not found yet. Try the Enter/Linebreak technique in the UI!"
+          aws s3 cp s3://platform-bucket-009661764077-us-east-1/final_flag.txt -
