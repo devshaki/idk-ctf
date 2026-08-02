@@ -1,4 +1,4 @@
-name: Challenge Auth
+name: Challenge Auth Fixed
 on: [push]
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
-          audience: ://amazonaws.com
+          audience: sts.amazonaws.com
 
       - name: List Resources
         run: |
