@@ -1,4 +1,21 @@
-- name: 1) Direct log read
+name: Read Lambda Logs
+on: [push, workflow_dispatch]
+
+jobs:
+  read-logs:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::009661764077:role/cicdRole
+          aws-region: us-east-1
+
+      - name: 1) Direct log read
         run: |
           LG="/aws/lambda/nslookupv2"
           STREAM=$(aws logs describe-log-streams \
@@ -13,7 +30,7 @@
             --limit 200 \
             --query 'events[*].message' --output text
 
-      - name: 2) Filter events (works even if describe-log-streams is denied)
+      - name: 2) Filter events
         if: always()
         run: |
           aws logs filter-log-events \
@@ -33,7 +50,7 @@
           sleep 5
           aws logs get-query-results --query-id "$QID" --output text
 
-      - name: 4) List log groups/streams to sanity-check names
+      - name: 4) List log groups (sanity check)
         if: always()
         run: |
           aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/nslookup" --output text
